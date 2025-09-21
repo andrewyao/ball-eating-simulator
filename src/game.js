@@ -108,14 +108,14 @@ class Game {
   }
 
   spawnInitialEnemies() {
-    // Spawn 2 balls bigger than player to ensure player starts in top 3
-    for (let i = 0; i < 2; i++) {
+    // Spawn 4 balls bigger than player to ensure player starts in top 5
+    for (let i = 0; i < 4; i++) {
       const pos = randomPosition(150);
       if (Math.abs(pos.x) < 30 && Math.abs(pos.z) < 30) {
         pos.x = pos.x < 0 ? pos.x - 30 : pos.x + 30;
         pos.z = pos.z < 0 ? pos.z - 30 : pos.z + 30;
       }
-      const size = randomSize(9, 12);
+      const size = randomSize(16, 25);
       const color = randomColor();
       const name = generateAIName();
       
@@ -159,6 +159,13 @@ class Game {
       }
       this.keys[e.key] = false;
     });
+    
+    // Fullscreen toggle
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        this.toggleFullscreen();
+      }
+    });
 
     // Touch controls for iPad
     const canvas = document.getElementById('gameCanvas');
@@ -193,6 +200,16 @@ class Game {
     document.getElementById('restartBtn').addEventListener('click', () => {
       this.restart();
     });
+  }
+  
+  toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.log(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
   }
 
   handleInput() {
