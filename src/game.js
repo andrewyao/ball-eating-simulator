@@ -451,3 +451,15 @@ class Game {
 }
 
 const game = new Game();
+
+// Attempt automatic fullscreen on page load
+window.addEventListener('load', () => {
+  // Small delay to ensure everything is initialized
+  setTimeout(() => {
+    // Try to click the fullscreen button automatically
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    if (fullscreenBtn) {
+      fullscreenBtn.click();
+    }
+  }, 100);
+});
