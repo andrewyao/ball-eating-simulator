@@ -384,7 +384,7 @@ class Game {
     if (this.gameOver || !this.player) return;
     
     const isMobile = window.innerHeight > window.innerWidth;
-    const force = isMobile ? 4.0 : 2.0; // Increased mobile force for faster movement
+    const force = isMobile ? 8.0 : 2.0; // Increased mobile force for faster movement
     const rotationSpeed = 0.01;
     
     // Auto-move forward on mobile
