@@ -71,7 +71,11 @@ class Game {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.handleMobileLayout();
     });
+    
+    // Initial mobile layout check
+    this.handleMobileLayout();
   }
 
   setupLights() {
@@ -273,6 +277,36 @@ class Game {
         this.activateSpinner();
       }
     });
+  }
+  
+  /**
+   * Handle mobile layout - hide leaderboard and show mobile-specific instructions
+   */
+  handleMobileLayout() {
+    const isMobile = window.innerHeight > window.innerWidth;
+    const leaderboard = document.getElementById('leaderboard');
+    const instructions = document.getElementById('instructions');
+    
+    if (leaderboard) {
+      leaderboard.style.display = isMobile ? 'none' : 'block';
+    }
+    
+    if (instructions) {
+      if (isMobile) {
+        instructions.innerHTML = `
+          <p>📱 Touch: Swipe up to move, left/right to turn, double-tap to jump</p>
+          <p>🎰 Tap SPIN button for power-ups</p>
+          <p>Eat smaller balls to grow. Avoid larger balls!</p>
+        `;
+      } else {
+        instructions.innerHTML = `
+          <p>🎮 Keyboard: ↑ forward, ← → rotate, F fullscreen, Space jump</p>
+          <p>🔢 Power-ups: 1 speed, 2 size, 3 PacMan, 4 Saturn, 5 Earth</p>
+          <p>📱 Touch: Swipe up to move, left/right to turn</p>
+          <p>Eat smaller balls to grow. Avoid larger balls!</p>
+        `;
+      }
+    }
   }
   
   /**
