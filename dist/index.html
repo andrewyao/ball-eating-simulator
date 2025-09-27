@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ball Eating Simulator</title>
-  <script type="module" crossorigin src="./assets/index-BkLbni3T.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-xP7Q5cQd.css">
+  <script type="module" crossorigin src="./assets/index-DTwC35Wo.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BtK8xMmE.css">
 </head>
 <body>
   <div id="game-container">
@@ -14,22 +14,47 @@
       <div id="score">Score: <span id="scoreValue">0</span></div>
       <div id="size">Size: <span id="sizeValue">1</span></div>
       <button id="fullscreenBtn" title="Toggle fullscreen">⤢</button>
-      <div id="leaderboard">
-        <h3>Leaderboard</h3>
-        <div id="leaderboardList">
-        </div>
-      </div>
-      <div id="gameOver" class="hidden">
-        <h2>Game Over!</h2>
-        <p>Final Score: <span id="finalScore">0</span></p>
-        <button id="restartBtn">Restart</button>
+      
+      <div id="powerup-container">
+        <button id="spinBtn" title="Spin for power-up (Space)">🎰 SPIN</button>
+        <div id="powerup-result" class="hidden"></div>
+        <div id="active-powerups"></div>
       </div>
     </div>
+    
+    <!-- Move spinner outside ui-overlay -->
+    <div id="spinner-wheel" class="hidden">
+      <div class="spinner-container">
+        <div class="wheel">
+          <div class="segment" data-type="speed"><span>⚡ Speed Boost</span></div>
+          <div class="segment" data-type="size"><span>🎈 Size Boost</span></div>
+          <div class="segment" data-type="pacman"><span>👾 PacMan</span></div>
+          <div class="segment" data-type="saturn"><span>🪐 Saturn</span></div>
+          <div class="segment" data-type="earth"><span>🌍 Earth</span></div>
+          <div class="segment" data-type="tryagain"><span>🔄 Try Again</span></div>
+        </div>
+        <div class="pointer">▼</div>
+      </div>
+    </div>
+    
+    <!-- Leaderboard should always be visible -->
+    <div id="leaderboard">
+      <h3>Leaderboard</h3>
+      <div id="leaderboardList">
+      </div>
+    </div>
+    
+    <div id="gameOver" class="hidden">
+      <h2>Game Over!</h2>
+      <p>Final Score: <span id="finalScore">0</span></p>
+      <button id="restartBtn">Restart</button>
+      <p style="margin-top: 20px; font-size: 18px; opacity: 0.8;">Press Enter to restart</p>
+    </div>
     <div id="instructions">
-      <p>🎮 Keyboard: ↑ forward, ← → rotate, F fullscreen</p>
+      <p>🎮 Keyboard: ↑ forward, ← → rotate, F fullscreen, Space jump</p>
+      <p>🔢 Power-ups: 1 speed, 2 size, 3 PacMan, 4 Saturn, 5 Earth</p>
       <p>📱 Touch: Swipe up to move, left/right to turn</p>
-      <p>Eat smaller balls to grow</p>
-      <p>Avoid larger balls!</p>
+      <p>Eat smaller balls to grow. Avoid larger balls!</p>
     </div>
   </div>
 </body>
