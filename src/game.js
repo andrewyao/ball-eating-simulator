@@ -55,10 +55,25 @@ class Game {
     this.scene.background = new THREE.Color(0x000000);
     
     const canvas = document.getElementById('gameCanvas');
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const isMobile = window.innerHeight > window.innerWidth;
+    
+    // Mobile performance optimizations
+    this.renderer = new THREE.WebGLRenderer({ 
+      canvas, 
+      antialias: !isMobile, // Disable antialiasing on mobile
+      powerPreference: isMobile ? "low-power" : "high-performance"
+    });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Reduced shadow quality on mobile
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+    
+    // Mobile performance settings
+    if (isMobile) {
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio
+      this.renderer.physicallyCorrectLights = false;
+    }
     
     this.camera = new THREE.PerspectiveCamera(
       75,
@@ -93,8 +108,12 @@ class Game {
     directionalLight.shadow.camera.bottom = -300;
     directionalLight.shadow.camera.near = 0.1;
     directionalLight.shadow.camera.far = 800;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
+    
+    // Lower shadow resolution on mobile for better performance
+    const isMobile = window.innerHeight > window.innerWidth;
+    const shadowMapSize = isMobile ? 512 : 2048;
+    directionalLight.shadow.mapSize.width = shadowMapSize;
+    directionalLight.shadow.mapSize.height = shadowMapSize;
     this.scene.add(directionalLight);
     
     // Secondary light from different angle for better terrain visibility
@@ -109,7 +128,8 @@ class Game {
 
   createFloor() {
     const worldSize = 500;
-    const segments = 50; // Grid resolution
+    const isMobile = window.innerHeight > window.innerWidth;
+    const segments = isMobile ? 20 : 50; // Reduced geometry on mobile
     
     // Create completely flat ground plane with wireframe
     const groundGeometry = new THREE.PlaneGeometry(worldSize, worldSize, segments, segments);
@@ -586,7 +606,10 @@ class Game {
     requestAnimationFrame(() => this.animate());
     
     if (!this.gameOver) {
-      const deltaTime = 1 / 60;
+      // Use actual frame time instead of fixed 60fps
+      const now = performance.now();
+      const deltaTime = this.lastFrameTime ? Math.min((now - this.lastFrameTime) / 1000, 1/30) : 1/60;
+      this.lastFrameTime = now;
       
       // Update power-ups
       this.updatePowerUps(deltaTime);
@@ -617,8 +640,10 @@ class Game {
         this.cameraController.update();
       }
       
-      // Update leaderboard every 60 frames (1 second at 60fps)
-      if (Math.floor(Date.now() / 1000) % 1 === 0) {
+      // Update leaderboard less frequently on mobile for better performance
+      const isMobile = window.innerHeight > window.innerWidth;
+      const leaderboardUpdateInterval = isMobile ? 2 : 1; // Every 2 seconds on mobile, 1 second on desktop
+      if (Math.floor(Date.now() / 1000) % leaderboardUpdateInterval === 0) {
         this.updateLeaderboard();
       }
     }
