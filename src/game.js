@@ -65,13 +65,15 @@ class Game {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     
-    // Reduced shadow quality on mobile
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+    // Disable shadows completely on mobile for maximum performance
+    this.renderer.shadowMap.enabled = !isMobile;
+    if (!isMobile) {
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
     
     // Mobile performance settings
     if (isMobile) {
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio
+      this.renderer.setPixelRatio(0.75); // Lower resolution for better performance
       this.renderer.physicallyCorrectLights = false;
     }
     
@@ -101,7 +103,7 @@ class Game {
     // Main directional light (sun)
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
     directionalLight.position.set(100, 150, 100);
-    directionalLight.castShadow = true;
+    directionalLight.castShadow = !isMobile; // No shadows on mobile
     directionalLight.shadow.camera.left = -300;
     directionalLight.shadow.camera.right = 300;
     directionalLight.shadow.camera.top = 300;
@@ -163,8 +165,11 @@ class Game {
   }
 
   spawnInitialEnemies() {
-    // Spawn 2 balls bigger than player to ensure player starts in top 5
-    for (let i = 0; i < 2; i++) {
+    const isMobile = window.innerHeight > window.innerWidth;
+    const bigEnemyCount = isMobile ? 1 : 2; // Fewer enemies on mobile
+    
+    // Spawn bigger balls to ensure player starts in top 5
+    for (let i = 0; i < bigEnemyCount; i++) {
       const pos = randomPosition(150);
       if (Math.abs(pos.x) < 30 && Math.abs(pos.z) < 30) {
         pos.x = pos.x < 0 ? pos.x - 30 : pos.x + 30;
@@ -182,7 +187,8 @@ class Game {
     }
     
     // Spawn fewer smaller balls for better performance
-    for (let i = 0; i < 15; i++) {
+    const smallEnemyCount = isMobile ? 8 : 15; // Significantly fewer enemies on mobile
+    for (let i = 0; i < smallEnemyCount; i++) {
       this.spawnEnemy();
     }
   }
@@ -497,6 +503,15 @@ class Game {
   }
 
   updateAI() {
+    const isMobile = window.innerHeight > window.innerWidth;
+    
+    // Reduce AI update frequency on mobile
+    if (isMobile && this.frameCount % 2 !== 0) {
+      this.frameCount = (this.frameCount || 0) + 1;
+      return; // Skip every other frame on mobile
+    }
+    this.frameCount = (this.frameCount || 0) + 1;
+    
     const allBalls = [this.player, ...this.enemies];
     
     this.enemies.forEach(enemy => {

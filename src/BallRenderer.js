@@ -18,43 +18,60 @@ export class BallRenderer {
   createMesh(ballData) {
     const { radius, isPlayer, currentSkin, color, id } = ballData;
     let texture, material;
-    const geometry = new THREE.SphereGeometry(radius, 32, 16);
+    
+    // Use lower quality geometry on mobile for better performance
+    const isMobile = window.innerHeight > window.innerWidth;
+    const widthSegments = isMobile ? 16 : 32;
+    const heightSegments = isMobile ? 8 : 16;
+    const geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
     let needsSaturnRing = false;
     
     if (isPlayer) {
       // Player ball appearance depends on current skin
-      if (currentSkin === 'earth') {
-        texture = TextureFactory.createEarthTexture();
-        material = new THREE.MeshPhongMaterial({ 
-          map: texture,
-          shininess: 20,
+      // Use simpler materials on mobile for better performance
+      if (isMobile) {
+        material = new THREE.MeshBasicMaterial({ 
+          color: currentSkin === 'earth' ? 0x4169e1 : 
+                currentSkin === 'saturn' ? 0x8b4513 :
+                currentSkin === 'pacman' ? 0xffff00 : color,
           transparent: true,
-          opacity: 0.9,
-          color: 0xffffff
+          opacity: currentSkin === 'default' ? 0.4 : 1
         });
-      } else if (currentSkin === 'saturn') {
-        material = new THREE.MeshPhongMaterial({
-          color: 0x8b4513, // Brown
-          shininess: 30,
-          transparent: false,
-          opacity: 1
-        });
-        needsSaturnRing = true;
-      } else if (currentSkin === 'pacman') {
-        material = new THREE.MeshPhongMaterial({
-          color: 0xffff00, // Yellow
-          shininess: 20,
-          transparent: false,
-          opacity: 1
-        });
+        if (currentSkin === 'saturn') needsSaturnRing = true;
       } else {
-        // Default regular ball appearance
-        material = new THREE.MeshPhongMaterial({ 
-          color: color,
-          shininess: 20,
-          transparent: true,
-          opacity: 0.4
-        });
+        if (currentSkin === 'earth') {
+          texture = TextureFactory.createEarthTexture();
+          material = new THREE.MeshPhongMaterial({ 
+            map: texture,
+            shininess: 20,
+            transparent: true,
+            opacity: 0.9,
+            color: 0xffffff
+          });
+        } else if (currentSkin === 'saturn') {
+          material = new THREE.MeshPhongMaterial({
+            color: 0x8b4513, // Brown
+            shininess: 30,
+            transparent: false,
+            opacity: 1
+          });
+          needsSaturnRing = true;
+        } else if (currentSkin === 'pacman') {
+          material = new THREE.MeshPhongMaterial({
+            color: 0xffff00, // Yellow
+            shininess: 20,
+            transparent: false,
+            opacity: 1
+          });
+        } else {
+          // Default regular ball appearance
+          material = new THREE.MeshPhongMaterial({ 
+            color: color,
+            shininess: 20,
+            transparent: true,
+            opacity: 0.4
+          });
+        }
       }
     } else {
       // Enemy ball appearance based on size
