@@ -294,7 +294,7 @@ class Game {
     if (instructions) {
       if (isMobile) {
         instructions.innerHTML = `
-          <p>📱 Touch: Swipe up to move, left/right to turn, double-tap to jump</p>
+          <p>📱 Touch: Swipe left/right to turn, double-tap to jump</p>
           <p>🎰 Tap SPIN button for power-ups</p>
           <p>Eat smaller balls to grow. Avoid larger balls!</p>
         `;
@@ -385,19 +385,39 @@ class Game {
     
     const force = 2.0;
     const rotationSpeed = 0.01;
+    const isMobile = window.innerHeight > window.innerWidth;
     
-    // Handle touch input for iPad
+    // Auto-move forward on mobile
+    if (isMobile) {
+      const forward = new THREE.Vector3(
+        -Math.sin(this.cameraController.angle),
+        0,
+        -Math.cos(this.cameraController.angle)
+      );
+      forward.normalize().multiplyScalar(force);
+      this.player.applyForce(forward);
+    }
+    
+    // Handle touch input for rotation only
     if (this.touchStartPos && this.touchCurrentPos) {
       const deltaX = this.touchCurrentPos.x - this.touchStartPos.x;
-      const deltaY = this.touchCurrentPos.y - this.touchStartPos.y;
       
       // Horizontal swipe for rotation
       if (Math.abs(deltaX) > 10) {
         this.cameraController.rotate(-deltaX * 0.001);
       }
+    }
+    
+    // Keyboard controls (desktop only)
+    if (!isMobile) {
+      if (this.keys['ArrowLeft'] || this.keys['a']) {
+        this.cameraController.rotate(rotationSpeed);
+      }
+      if (this.keys['ArrowRight'] || this.keys['d']) {
+        this.cameraController.rotate(-rotationSpeed);
+      }
       
-      // Vertical swipe or tap for forward movement
-      if (deltaY < -30 || Math.abs(deltaX) < 30) {
+      if (this.keys['ArrowUp'] || this.keys['w']) {
         const forward = new THREE.Vector3(
           -Math.sin(this.cameraController.angle),
           0,
@@ -406,24 +426,6 @@ class Game {
         forward.normalize().multiplyScalar(force);
         this.player.applyForce(forward);
       }
-    }
-    
-    // Keyboard controls (existing)
-    if (this.keys['ArrowLeft'] || this.keys['a']) {
-      this.cameraController.rotate(rotationSpeed);
-    }
-    if (this.keys['ArrowRight'] || this.keys['d']) {
-      this.cameraController.rotate(-rotationSpeed);
-    }
-    
-    if (this.keys['ArrowUp'] || this.keys['w']) {
-      const forward = new THREE.Vector3(
-        -Math.sin(this.cameraController.angle),
-        0,
-        -Math.cos(this.cameraController.angle)
-      );
-      forward.normalize().multiplyScalar(force);
-      this.player.applyForce(forward);
     }
   }
 
