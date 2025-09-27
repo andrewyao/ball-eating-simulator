@@ -96,6 +96,8 @@ class Game {
   }
 
   setupLights() {
+    const isMobile = window.innerHeight > window.innerWidth;
+    
     // Brighter ambient light to show terrain colors better
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambientLight);
@@ -112,7 +114,6 @@ class Game {
     directionalLight.shadow.camera.far = 800;
     
     // Lower shadow resolution on mobile for better performance
-    const isMobile = window.innerHeight > window.innerWidth;
     const shadowMapSize = isMobile ? 512 : 2048;
     directionalLight.shadow.mapSize.width = shadowMapSize;
     directionalLight.shadow.mapSize.height = shadowMapSize;
