@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Ball } from './Ball.js';
 import { CameraController } from './Camera.js';
 import { randomColor, randomPosition, randomSize, calculateSpawnRate, calculateMaxEnemies, generateAIName } from './utils.js';
+import { PowerUpManager, PowerUpSpinner } from './PowerUp.js';
 
 class Game {
   constructor() {
@@ -20,6 +21,12 @@ class Game {
     this.touchStartPos = null;
     this.touchCurrentPos = null;
     
+    // Power-up system
+    this.powerUpManager = new PowerUpManager();
+    this.powerUpSpinner = null;
+    this.spinCooldown = 0;
+    this.isSpinning = false;
+    
     this.init();
   }
 
@@ -30,6 +37,8 @@ class Game {
     this.createPlayer();
     this.setupControls();
     
+    this.powerUpSpinner = new PowerUpSpinner(this.scene);
+    
     this.spawnInitialEnemies();
     this.updateUI();
     
@@ -38,8 +47,8 @@ class Game {
 
   setupScene() {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x87CEEB, 100, 500);
-    this.scene.background = new THREE.Color(0x87CEEB);
+    this.scene.fog = new THREE.Fog(0x000000, 100, 500);
+    this.scene.background = new THREE.Color(0x000000);
     
     const canvas = document.getElementById('gameCanvas');
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -62,45 +71,63 @@ class Game {
   }
 
   setupLights() {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Brighter ambient light to show terrain colors better
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(50, 100, 50);
+    // Main directional light (sun)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(100, 150, 100);
     directionalLight.castShadow = true;
-    directionalLight.shadow.camera.left = -200;
-    directionalLight.shadow.camera.right = 200;
-    directionalLight.shadow.camera.top = 200;
-    directionalLight.shadow.camera.bottom = -200;
+    directionalLight.shadow.camera.left = -300;
+    directionalLight.shadow.camera.right = 300;
+    directionalLight.shadow.camera.top = 300;
+    directionalLight.shadow.camera.bottom = -300;
     directionalLight.shadow.camera.near = 0.1;
-    directionalLight.shadow.camera.far = 500;
-    directionalLight.shadow.mapSize.width = 4096;
-    directionalLight.shadow.mapSize.height = 4096;
+    directionalLight.shadow.camera.far = 800;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
     this.scene.add(directionalLight);
     
-    const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x545454, 0.4);
+    // Secondary light from different angle for better terrain visibility
+    const secondaryLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    secondaryLight.position.set(-50, 80, -50);
+    this.scene.add(secondaryLight);
+    
+    // Hemisphere light for natural outdoor lighting
+    const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x362d1d, 0.3);
     this.scene.add(hemisphereLight);
   }
 
   createFloor() {
     const worldSize = 500;
-    const gridHelper = new THREE.GridHelper(worldSize, 100, 0x666666, 0x444444);
-    this.scene.add(gridHelper);
+    const segments = 50; // Grid resolution
     
-    const floorGeometry = new THREE.PlaneGeometry(worldSize, worldSize);
-    const floorMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0x90EE90, 
-      side: THREE.DoubleSide 
+    // Create completely flat ground plane with wireframe
+    const groundGeometry = new THREE.PlaneGeometry(worldSize, worldSize, segments, segments);
+    
+    // Keep all vertices at Y = 0 (completely flat)
+    // No height modifications
+    
+    // Create wireframe material
+    const wireframeMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x00aa00,
+      wireframe: true
     });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -0.1;
-    floor.receiveShadow = true;
-    this.scene.add(floor);
+    
+    // Create the wireframe mesh
+    this.terrain = new THREE.Mesh(groundGeometry, wireframeMaterial);
+    this.terrain.rotation.x = -Math.PI / 2; // Make it horizontal
+    this.scene.add(this.terrain);
+    
+    // Store for calculations
+    this.terrainGeometry = groundGeometry;
+    this.worldSize = worldSize;
   }
 
   createPlayer() {
-    const playerPos = { x: 0, y: 0, z: 0 };
+    const playerPos = { x: 0, y: 15, z: 0 }; // Y = radius for flat ground
+    
     this.player = new Ball(playerPos.x, playerPos.y, playerPos.z, 15, 0x00ff00, this.scene, 'Player');
     this.player.isPlayer = true;
     
@@ -108,8 +135,8 @@ class Game {
   }
 
   spawnInitialEnemies() {
-    // Spawn 4 balls bigger than player to ensure player starts in top 5
-    for (let i = 0; i < 4; i++) {
+    // Spawn 2 balls bigger than player to ensure player starts in top 5
+    for (let i = 0; i < 2; i++) {
       const pos = randomPosition(150);
       if (Math.abs(pos.x) < 30 && Math.abs(pos.z) < 30) {
         pos.x = pos.x < 0 ? pos.x - 30 : pos.x + 30;
@@ -119,12 +146,15 @@ class Game {
       const color = randomColor();
       const name = generateAIName();
       
+      // Set Y position for flat ground
+      pos.y = size; // Y = radius for flat ground
+      
       const enemy = new Ball(pos.x, pos.y, pos.z, size, color, this.scene, name);
       this.enemies.push(enemy);
     }
     
-    // Spawn many smaller balls
-    for (let i = 0; i < 40; i++) {
+    // Spawn fewer smaller balls for better performance
+    for (let i = 0; i < 15; i++) {
       this.spawnEnemy();
     }
   }
@@ -136,9 +166,13 @@ class Game {
       pos.x = pos.x < 0 ? pos.x - 20 : pos.x + 20;
       pos.z = pos.z < 0 ? pos.z - 20 : pos.z + 20;
     }
+    
     const size = randomSize(1, 8);
     const color = randomColor();
     const name = generateAIName();
+    
+    // Set Y position for flat ground
+    pos.y = size; // Y = radius for flat ground
     
     const enemy = new Ball(pos.x, pos.y, pos.z, size, color, this.scene, name);
     this.enemies.push(enemy);
@@ -164,6 +198,21 @@ class Game {
     window.addEventListener('keydown', (e) => {
       if (e.key === 'f' || e.key === 'F') {
         this.toggleFullscreen();
+      }
+      // Space bar for jump (only when game is not over)
+      if (e.key === ' ' && !this.gameOver && this.player) {
+        e.preventDefault();
+        this.playerJump();
+      }
+      // Direct power-up shortcuts (only when game is not over)
+      if (e.key >= '1' && e.key <= '6' && !this.gameOver) {
+        e.preventDefault();
+        this.activatePowerUpDirect(parseInt(e.key) - 1);
+      }
+      // Restart game with Enter when game is over
+      if (e.key === 'Enter' && this.gameOver) {
+        e.preventDefault();
+        this.restart();
       }
     });
 
@@ -204,6 +253,48 @@ class Game {
     document.getElementById('fullscreenBtn').addEventListener('click', () => {
       this.toggleFullscreen();
     });
+    
+    document.getElementById('spinBtn').addEventListener('click', () => {
+      if (!this.isSpinning && this.spinCooldown <= 0 && !this.gameOver) {
+        this.activateSpinner();
+      }
+    });
+  }
+  
+  /**
+   * Get terrain height at a specific x,z position
+   */
+  getTerrainHeight(x, z) {
+    // Always return 0 for completely flat ground
+    return 0;
+  }
+  
+  /**
+   * Calculate terrain slope at position
+   */
+  getTerrainSlope(x, z) {
+    const delta = 1.0;
+    const h = this.getTerrainHeight(x, z);
+    const hx1 = this.getTerrainHeight(x + delta, z);
+    const hx2 = this.getTerrainHeight(x - delta, z);
+    const hz1 = this.getTerrainHeight(x, z + delta);
+    const hz2 = this.getTerrainHeight(x, z - delta);
+    
+    const slopeX = (hx1 - hx2) / (2 * delta);
+    const slopeZ = (hz1 - hz2) / (2 * delta);
+    
+    return new THREE.Vector3(slopeX, 0, slopeZ);
+  }
+  
+  /**
+   * Make the player ball jump
+   */
+  playerJump() {
+    if (!this.player || this.player.isJumping) return;
+    
+    // Set jump velocity
+    this.player.velocityY = 150; // Jump strength
+    this.player.isJumping = true;
   }
   
   toggleFullscreen() {
@@ -369,11 +460,18 @@ class Game {
     document.getElementById('scoreValue').textContent = this.score;
     document.getElementById('sizeValue').textContent = this.player.radius.toFixed(1);
     this.updateLeaderboard();
+    this.updatePowerUpUI();
   }
 
   updateLeaderboard() {
     const allBalls = [this.player, ...this.enemies].filter(ball => ball);
     allBalls.sort((a, b) => b.radius - a.radius);
+    
+    // Find biggest non-player ball and make it look like the Sun
+    const biggestNonPlayer = allBalls.find(ball => !ball.isPlayer);
+    if (biggestNonPlayer && biggestNonPlayer.radius >= 25) {
+      biggestNonPlayer.makeSun();
+    }
     
     const leaderboardList = document.getElementById('leaderboardList');
     leaderboardList.innerHTML = '';
@@ -397,8 +495,17 @@ class Game {
     this.gameOver = true;
     document.getElementById('finalScore').textContent = this.score;
     document.getElementById('gameOver').classList.remove('hidden');
+    
+    // Hide spinner and power-up UI when game is over
+    document.getElementById('spinner-wheel').classList.add('hidden');
+    document.getElementById('powerup-result').classList.add('hidden');
+    document.getElementById('spinBtn').style.display = 'none';
   }
 
+  addHeightMarkers() {
+    // No markers needed for flat ground
+  }
+  
   restart() {
     this.enemies.forEach(enemy => enemy.destroy());
     this.enemies = [];
@@ -410,12 +517,19 @@ class Game {
     this.score = 0;
     this.gameOver = false;
     this.lastSpawnTime = 0;
+    this.spinCooldown = 0;
+    this.isSpinning = false;
+    this.powerUpManager.clearAll();
     
     this.createPlayer();
     this.spawnInitialEnemies();
     this.updateUI();
     
     document.getElementById('gameOver').classList.add('hidden');
+    // Show spinner button again
+    document.getElementById('spinBtn').style.display = 'block';
+    document.getElementById('spinBtn').classList.remove('cooldown');
+    document.getElementById('spinBtn').removeAttribute('data-cooldown');
   }
 
   animate() {
@@ -424,13 +538,26 @@ class Game {
     if (!this.gameOver) {
       const deltaTime = 1 / 60;
       
+      // Update power-ups
+      this.updatePowerUps(deltaTime);
+      
       this.handleInput();
       
+      // Create terrain object for physics calculations
+      const terrain = {
+        getHeight: (x, z) => this.getTerrainHeight(x, z),
+        getSlope: (x, z) => this.getTerrainSlope(x, z)
+      };
+      
       if (this.player) {
+        this.player.terrain = terrain;
         this.player.update(deltaTime);
       }
       
-      this.enemies.forEach(enemy => enemy.update(deltaTime));
+      this.enemies.forEach(enemy => {
+        enemy.terrain = terrain;
+        enemy.update(deltaTime);
+      });
       
       this.updateAI();
       this.checkCollisions();
@@ -447,6 +574,196 @@ class Game {
     }
     
     this.renderer.render(this.scene, this.camera);
+  }
+  
+  activateSpinner() {
+    this.isSpinning = true;
+    this.spinCooldown = 10; // 10 second cooldown
+    
+    // Hide spin button and show spinner wheel
+    document.getElementById('spinBtn').classList.add('cooldown');
+    document.getElementById('spinner-wheel').classList.remove('hidden');
+    document.getElementById('powerup-result').classList.add('hidden');
+    
+    // Start spinning animation
+    const wheel = document.querySelector('.wheel');
+    wheel.classList.add('spinning');
+    
+    // Get result
+    const result = this.powerUpManager.spinForPowerUp();
+    
+    // Calculate rotation degrees based on result
+    const segmentAngle = 60; // 360 / 6 segments
+    const resultIndex = this.powerUpManager.powerUpTypes.findIndex(p => p.type === result.type);
+    const targetDegrees = 1800 + (resultIndex * segmentAngle) + 30; // 5 rotations + segment position
+    wheel.style.setProperty('--spin-degrees', `${targetDegrees}deg`);
+    
+    // Show result after spin completes
+    setTimeout(() => {
+      this.onSpinComplete(result);
+    }, 4000);
+  }
+  
+  activatePowerUpDirect(index) {
+    if (this.gameOver || !this.player) return;
+    
+    const powerUpType = this.powerUpManager.powerUpTypes[index];
+    if (!powerUpType) return;
+    
+    // Don't allow if same power-up is already active (except Try Again)
+    if (powerUpType.type !== 'tryagain' && this.powerUpManager.hasActivePowerUp(powerUpType.type)) {
+      return;
+    }
+    
+    // Show result briefly
+    const resultDiv = document.getElementById('powerup-result');
+    resultDiv.classList.remove('hidden');
+    const colorHex = '#' + powerUpType.color.toString(16).padStart(6, '0');
+    resultDiv.innerHTML = `<span style="color: ${colorHex}">✨ ${powerUpType.name}! ✨</span>`;
+    
+    // Apply power-up
+    if (powerUpType.type !== 'tryagain') {
+      const powerUp = this.powerUpManager.addPowerUp(powerUpType.type);
+      if (powerUp) {
+        this.applyPowerUp(powerUp);
+      }
+    }
+    
+    // Hide result after 2 seconds
+    setTimeout(() => {
+      resultDiv.classList.add('hidden');
+    }, 2000);
+    
+    this.updateUI();
+  }
+  
+  onSpinComplete(result) {
+    this.isSpinning = false;
+    
+    // Hide spinner wheel
+    document.getElementById('spinner-wheel').classList.add('hidden');
+    document.querySelector('.wheel').classList.remove('spinning');
+    
+    // Show result
+    const resultDiv = document.getElementById('powerup-result');
+    resultDiv.classList.remove('hidden');
+    const colorHex = '#' + result.color.toString(16).padStart(6, '0');
+    resultDiv.innerHTML = `<span style="color: ${colorHex}">✨ ${result.name}! ✨</span>`;
+    
+    // Apply power-up
+    if (result.type !== 'tryagain') {
+      const powerUp = this.powerUpManager.addPowerUp(result.type);
+      if (powerUp) {
+        this.applyPowerUp(powerUp);
+      }
+    } else {
+      // Try again - reset cooldown faster
+      this.spinCooldown = 2;
+    }
+    
+    // Hide result after 3 seconds
+    setTimeout(() => {
+      resultDiv.classList.add('hidden');
+    }, 3000);
+    
+    this.updateUI();
+  }
+  
+  applyPowerUp(powerUp) {
+    if (!this.player) return;
+    
+    switch(powerUp.type) {
+      case 'speed':
+        this.player.setSpeedBoost(2);
+        break;
+      case 'size':
+        this.player.setSizeBoost(1.2);
+        break;
+      case 'pacman':
+      case 'saturn':
+      case 'earth':
+        this.player.setSkin(powerUp.type);
+        break;
+    }
+  }
+  
+  removePowerUp(powerUp) {
+    if (!this.player) return;
+    
+    switch(powerUp.type) {
+      case 'speed':
+        this.player.setSpeedBoost(1);
+        break;
+      case 'size':
+        this.player.setSizeBoost(1);
+        break;
+      case 'pacman':
+      case 'saturn':
+      case 'earth':
+        this.player.setSkin('default');
+        break;
+    }
+  }
+  
+  updatePowerUps(deltaTime) {
+    // Update cooldown
+    if (this.spinCooldown > 0) {
+      this.spinCooldown -= deltaTime;
+      
+      // Update button with cooldown
+      const spinBtn = document.getElementById('spinBtn');
+      if (this.spinCooldown > 0) {
+        spinBtn.setAttribute('data-cooldown', Math.ceil(this.spinCooldown) + 's');
+        spinBtn.classList.add('cooldown');
+      } else {
+        spinBtn.removeAttribute('data-cooldown');
+        spinBtn.classList.remove('cooldown');
+      }
+    }
+    
+    // Check for expired power-ups
+    const expiredPowerUps = this.powerUpManager.activePowerUps.filter(p => p.isExpired());
+    expiredPowerUps.forEach(powerUp => {
+      this.removePowerUp(powerUp);
+    });
+    
+    // Update manager
+    this.powerUpManager.update();
+  }
+  
+  updatePowerUpUI() {
+    const container = document.getElementById('active-powerups');
+    container.innerHTML = '';
+    
+    this.powerUpManager.activePowerUps.forEach(powerUp => {
+      const indicator = document.createElement('div');
+      indicator.className = 'powerup-indicator';
+      
+      const icon = {
+        speed: '⚡',
+        size: '🎈',
+        pacman: '👾',
+        saturn: '🪐',
+        earth: '🌍'
+      }[powerUp.type] || '✨';
+      
+      const name = {
+        speed: 'Speed Boost',
+        size: 'Size Boost',
+        pacman: 'PacMan Skin',
+        saturn: 'Saturn Skin',
+        earth: 'Earth Skin'
+      }[powerUp.type] || 'Power-Up';
+      
+      const remaining = Math.ceil(powerUp.getRemainingTime() / 1000);
+      
+      indicator.innerHTML = `
+        <span>${icon} ${name}</span>
+        <span class="powerup-timer">${remaining}s</span>
+      `;
+      
+      container.appendChild(indicator);
+    });
   }
 }
 

@@ -176,3 +176,201 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* Power-up Spinner Styles */
+#powerup-container {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  text-align: center;
+  pointer-events: auto;
+}
+
+#spinBtn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: conic-gradient(
+    from 0deg,
+    #00ff00 0deg 60deg,
+    #ffff00 60deg 120deg,
+    #ff6b00 120deg 180deg,
+    #ffa500 180deg 240deg,
+    #0066cc 240deg 300deg,
+    #888888 300deg 360deg
+  );
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  pointer-events: auto;
+  margin-bottom: 10px;
+  font-size: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+#spinBtn::after {
+  content: '🎰';
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-size: 30px;
+  z-index: 2;
+}
+
+#spinBtn:hover {
+  transform: scale(1.1) rotate(15deg);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+}
+
+#spinBtn:active {
+  transform: scale(0.95) rotate(360deg);
+  transition: transform 0.5s ease;
+}
+
+#spinBtn.cooldown {
+  filter: grayscale(1);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+#spinBtn.cooldown::after {
+  content: attr(data-cooldown);
+  font-size: 16px;
+}
+
+#spinner-wheel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.spinner-container {
+  position: relative;
+}
+
+.wheel {
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 50px rgba(0,0,0,0.8);
+  animation: none;
+  background: conic-gradient(
+    from 0deg,
+    #00ff00 0deg 60deg,
+    #ffff00 60deg 120deg,
+    #ff6b00 120deg 180deg,
+    #ffa500 180deg 240deg,
+    #0066cc 240deg 300deg,
+    #888888 300deg 360deg
+  );
+  border: 5px solid #333;
+}
+
+.wheel.spinning {
+  animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99) forwards;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(var(--spin-degrees, 1800deg)); }
+}
+
+.segment {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  right: 0;
+  top: 0;
+  transform-origin: left bottom;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.segment span {
+  transform: rotate(-30deg) translateX(140px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: 48px;
+  font-weight: bold;
+  text-align: center;
+  width: 100px;
+  height: 100px;
+}
+
+.segment:nth-child(1) { transform: rotate(30deg); }
+.segment:nth-child(2) { transform: rotate(90deg); }
+.segment:nth-child(3) { transform: rotate(150deg); }
+.segment:nth-child(4) { transform: rotate(210deg); }
+.segment:nth-child(5) { transform: rotate(270deg); }
+.segment:nth-child(6) { transform: rotate(330deg); }
+
+.pointer {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 50px;
+  color: #ff0000;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+
+#powerup-result {
+  font-size: 24px;
+  font-weight: bold;
+  padding: 20px;
+  background: rgba(0,0,0,0.8);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  animation: resultPop 0.5s ease-out;
+}
+
+@keyframes resultPop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+#active-powerups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.powerup-indicator {
+  background: rgba(0,0,0,0.7);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.powerup-timer {
+  color: #4CAF50;
+  font-weight: bold;
+}
