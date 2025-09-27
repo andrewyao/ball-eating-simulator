@@ -74,46 +74,61 @@ export class BallRenderer {
         }
       }
     } else {
-      // Enemy ball appearance based on size
-      if (radius < 8) {
-        // Small balls look like moon
-        texture = TextureFactory.createMoonTexture();
-        material = new THREE.MeshPhongMaterial({ 
-          map: texture,
-          shininess: 20
+      // Enemy ball appearance - simplified on mobile
+      if (isMobile) {
+        // Use simple colors on mobile for better performance
+        const enemyColor = radius < 8 ? 0x999999 : // Gray for small
+                          radius < 15 ? 0xff6b35 : // Orange for medium 
+                          0x8b4513; // Brown for large
+        material = new THREE.MeshBasicMaterial({ 
+          color: enemyColor
         });
-      } else if (radius < 15) {
-        // Medium balls look like Mars
-        texture = TextureFactory.createMarsTexture();
-        material = new THREE.MeshPhongMaterial({ 
-          map: texture,
-          shininess: 20
-        });
+        if (radius >= 15 && parseInt(id, 36) % 2 !== 0) {
+          needsSaturnRing = true;
+        }
       } else {
-        // Large balls (15+) alternate between Jupiter and Saturn appearance
-        const isJupiter = parseInt(id, 36) % 2 === 0;
-        
-        if (isJupiter) {
-          // Jupiter appearance
-          texture = TextureFactory.createJupiterTexture();
+        // Full quality textures on desktop
+        if (radius < 8) {
+          // Small balls look like moon
+          texture = TextureFactory.createMoonTexture();
           material = new THREE.MeshPhongMaterial({ 
             map: texture,
-            shininess: 30
+            shininess: 20
+          });
+        } else if (radius < 15) {
+          // Medium balls look like Mars
+          texture = TextureFactory.createMarsTexture();
+          material = new THREE.MeshPhongMaterial({ 
+            map: texture,
+            shininess: 20
           });
         } else {
-          // Saturn appearance (brown ball)
-          material = new THREE.MeshPhongMaterial({
-            color: 0x8b4513, // Brown
-            shininess: 30
-          });
-          needsSaturnRing = true;
+          // Large balls (15+) alternate between Jupiter and Saturn appearance
+          const isJupiter = parseInt(id, 36) % 2 === 0;
+          
+          if (isJupiter) {
+            // Jupiter appearance
+            texture = TextureFactory.createJupiterTexture();
+            material = new THREE.MeshPhongMaterial({ 
+              map: texture,
+              shininess: 30
+            });
+          } else {
+            // Saturn appearance (brown ball)
+            material = new THREE.MeshPhongMaterial({
+              color: 0x8b4513, // Brown
+              shininess: 30
+            });
+            needsSaturnRing = true;
+          }
         }
       }
     }
     
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    // Disable shadow casting/receiving on mobile for better performance
+    mesh.castShadow = !isMobile;
+    mesh.receiveShadow = !isMobile;
     
     return { mesh, needsSaturnRing };
   }
