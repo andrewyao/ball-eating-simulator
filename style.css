@@ -374,3 +374,10 @@ body {
   color: #4CAF50;
   font-weight: bold;
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  #leaderboard {
+    display: none;
+  }
+}

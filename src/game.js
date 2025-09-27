@@ -21,6 +21,10 @@ class Game {
     this.touchStartPos = null;
     this.touchCurrentPos = null;
     
+    // Double tap detection for jump
+    this.lastTapTime = 0;
+    this.doubleTapThreshold = 300; // ms
+    
     // Power-up system
     this.powerUpManager = new PowerUpManager();
     this.powerUpSpinner = null;
@@ -227,6 +231,16 @@ class Game {
         y: touch.clientY
       };
       this.touchCurrentPos = { ...this.touchStartPos };
+      
+      // Double tap detection for jump
+      const currentTime = Date.now();
+      if (currentTime - this.lastTapTime < this.doubleTapThreshold) {
+        // Double tap detected - trigger jump
+        if (!this.gameOver && this.player) {
+          this.playerJump();
+        }
+      }
+      this.lastTapTime = currentTime;
     });
     
     canvas.addEventListener('touchmove', (e) => {
